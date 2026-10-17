@@ -8976,6 +8976,23 @@ class MeiReader:
         # signature would have been 4/4).
         expectedMeasureDuration = self.getMeasureDuration(observedDuration=maxBarDuration)
 
+        # @metcon="false": the bar holds less than its meter. The first such bar is a pickup,
+        # padded on the left; any later one (a last bar completing the pickup) on the right.
+        isFirstMeasure: bool = not getattr(self, '_sawMeasure', False)
+        self._sawMeasure = True
+        if (elem.get('metcon') == 'false'
+                and self.activeMeter is not None
+                and 0 < maxBarDuration < self.activeMeter.barDuration.quarterLength):
+            shortBy: OffsetQL = opFrac(
+                self.activeMeter.barDuration.quarterLength - maxBarDuration
+            )
+            for eachMeasure in staves.values():
+                if isinstance(eachMeasure, m21.stream.Measure):
+                    if isFirstMeasure:
+                        eachMeasure.paddingLeft = shortBy
+                    else:
+                        eachMeasure.paddingRight = shortBy
+
         # create invisible-rest-filled measures for expected parts that had no <staff> tag
         # in this <measure>
         for eachN in expectedNs:

@@ -217,6 +217,10 @@ class MeiMeasure:
             return
 
         meiStaff = self.staves[0]
+        if meiStaff.m21Measure.paddingLeft or meiStaff.m21Measure.paddingRight:
+            # A pickup, or a last bar that completes one: the bar holds less than its meter.
+            attr['metcon'] = 'false'
+
         if self.prevMeiMeasure is None:
             # This is the very first measure.  We need to emit 'left' attribute
             # instead of assuming the previous measure combined it into their
