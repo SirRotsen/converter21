@@ -139,6 +139,8 @@ class MeiMeasure:
 
         self._checkForEndingStart(tb)
 
+        self._makeMeterChangeScoreDef(tb)
+
         attr: dict[str, str] = {}
         self._fillInMeasureAttributes(attr)
 
@@ -150,6 +152,49 @@ class MeiMeasure:
         tb.end('measure')
 
         self._checkForEndingEnd(tb)
+
+    def _makeMeterChangeScoreDef(self, tb: TreeBuilder):
+        # A time signature change at the start of a measure, the same on every
+        # staff, is written as one <scoreDef> in the <section> just before the
+        # <measure>.  MEI doesn't allow a <staffDef> inside a <measure>, and
+        # Verovio ignores one there.  A change that differs between staves
+        # (or that is missing on some staff) is left to MeiStaff as before.
+        changes: list[m21.meter.TimeSignature] = []
+        for m21m in self.m21Measures:
+            found: list[m21.meter.TimeSignature] = [
+                ts for ts in m21m.getElementsByClass(m21.meter.TimeSignature)
+                if ts.getOffsetInHierarchy(m21m) == 0
+                and not hasattr(ts, 'mei_handled_already')
+            ]
+            if len(found) != 1:
+                return
+            changes.append(found[0])
+
+        if not changes:
+            return
+
+        first: m21.meter.TimeSignature = changes[0]
+        for ts in changes[1:]:
+            if (ts.numerator, ts.denominator, ts.symbol) != (
+                    first.numerator, first.denominator, first.symbol):
+                return
+
+        attr: dict[str, str] = {
+            'meter.count': str(first.numerator),
+            'meter.unit': str(first.denominator),
+        }
+        if first.symbol:
+            attr['meter.sym'] = first.symbol
+        tb.start('scoreDef', attr)
+        tb.end('scoreDef')
+
+        for ts in changes:
+            ts.mei_handled_already = True  # type: ignore
+            M21Utilities.extendCustomM21Attributes(
+                self.customAttrs,
+                ts,
+                ['mei_handled_already']
+            )
 
     def _checkForEndingStart(self, tb: TreeBuilder):
         rb: m21.spanner.RepeatBracket | None = None

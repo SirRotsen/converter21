@@ -104,6 +104,10 @@ class MeiStaff:
                     el,
                     (m21.clef.Clef, m21.meter.TimeSignature, m21.key.KeySignature)
                 ):
+                    if hasattr(el, 'mei_handled_already'):
+                        # already written elsewhere (e.g. a meter change as a
+                        # <scoreDef> before this <measure>)
+                        continue
                     elOffsetInMeasure: OffsetQL = el.getOffsetInHierarchy(self.m21Measure)
                     if elOffsetInMeasure == 0:
                         if self.m21Measure.getOffsetInHierarchy(self.m21Score) == 0:
